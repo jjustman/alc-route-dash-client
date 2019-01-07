@@ -111,6 +111,15 @@ void itoa(int value, char* str, int base) {
 	strreverse(str,wstr-1);
 }
 
+typedef struct route_fragment {
+	unsigned long long tsi;
+	unsigned long long toi;
+
+	uint8_t *fragment;
+	unsigned long long pos;
+	long size;
+
+} route_fragment_t;
 
 int analyze_packet(char *data, int len, alc_channel_t *ch) {
 
@@ -632,12 +641,25 @@ int analyze_packet(char *data, int len, alc_channel_t *ch) {
 	char *myFilePathName = calloc(64, sizeof(char));
 	int filename_pos = 0;
 
-	snprintf(myFilePathName,64, "route/%d-%d-%08x", tsi, toi, esi);
+	//for fragment captures
+	//snprintf(myFilePathName,64, "route/%d-%d-%08x", tsi, toi, esi);
+
+	//for object recovery
+	snprintf(myFilePathName,64, "route/%d-%d", tsi, toi);
 
 
-	printf("%d:alc_rx.c - dumping to file: %s\n", __LINE__, myFilePathName);
 
-	FILE *f = fopen(myFilePathName, "w");
+	//open for append if our esi is greater than 0
+	FILE *f = NULL;
+	if(esi>0) {
+		printf("%d:alc_rx.c - dumping to file in append mode: %s, esi: %x\n", __LINE__, myFilePathName, esi);
+		f = fopen(myFilePathName, "a");
+	} else {
+		printf("%d:alc_rx.c - dumping to file in write mode: %s, esi: %x\n", __LINE__, myFilePathName, esi);
+
+		//open as write
+		f = fopen(myFilePathName, "w");
+	}
 	if(!f) {
 		printf("%d:alc_rx.c - UNABLE TO OPEN FILE %s\n", __LINE__, myFilePathName);
 		return -31337;
@@ -1189,8 +1211,8 @@ int recv_packet(alc_session_t *s) {
       curr_time = systime + 2208988800U;
       
       if(curr_time >= s->stoptime) {
-	s->state = SExiting;
-	return -2;
+		s->state = SExiting;
+		return -2;
       }
     }
     
