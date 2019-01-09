@@ -65,6 +65,9 @@
 #include "transport.h"
 #include "alc_list.h"
 
+
+static __INT_LOOP_COUNT=0;
+
 /**
  * This is a private function which parses and analyzes an ALC packet.
  *
@@ -635,31 +638,42 @@ int analyze_packet(char *data, int len, alc_channel_t *ch) {
 
 	//combine TSI and TOI and fragment counter
 	//toi-
-	int alc_len = len - hdrlen;
-	printf("%d:alc_rx.c - have tsi: %llu, toi: %llu, esi: %x len: %d\n", __LINE__, tsi, toi, esi, alc_len);
 
 	char *myFilePathName = calloc(64, sizeof(char));
 	int filename_pos = 0;
-
-	//for fragment captures
-	//snprintf(myFilePathName,64, "route/%d-%d-%08x", tsi, toi, esi);
-
-	//for object recovery
-	snprintf(myFilePathName,64, "route/%d-%d", tsi, toi);
+	int alc_len = len - hdrlen;
+	printf("%d:alc_rx.c - have tsi: %llu, toi: %llu, esi: %x len: %d\n", __LINE__, tsi, toi, esi, alc_len);
 
 
 
-	//open for append if our esi is greater than 0
 	FILE *f = NULL;
-	if(esi>0) {
-		printf("%d:alc_rx.c - dumping to file in append mode: %s, esi: %x\n", __LINE__, myFilePathName, esi);
-		f = fopen(myFilePathName, "a");
-	} else {
-		printf("%d:alc_rx.c - dumping to file in write mode: %s, esi: %x\n", __LINE__, myFilePathName, esi);
 
-		//open as write
+	//if no TSI, this is metadata adn create a new object for eeach payload
+	if(!tsi) {
+		snprintf(myFilePathName,64, "route/%d-%d-%d", tsi, toi, __INT_LOOP_COUNT++);
 		f = fopen(myFilePathName, "w");
+
+	} else {
+		snprintf(myFilePathName,64, "route/%d-%d", tsi, toi);
+
+		if(esi>0) {
+			printf("%d:alc_rx.c - dumping to file in append mode: %s, esi: %x\n", __LINE__, myFilePathName, esi);
+			f = fopen(myFilePathName, "a");
+		} else {
+			printf("%d:alc_rx.c - dumping to file in write mode: %s, esi: %x\n", __LINE__, myFilePathName, esi);
+
+			//open as write
+			f = fopen(myFilePathName, "w");
+		}
+
+		//for fragment captures
+		//snprintf(myFilePathName,64, "route/%d-%d-%08x", tsi, toi, esi);
+	//	printf("%d:alc_rx.c - dumping to file in write mode: %s, esi: %x\n", __LINE__, myFilePathName, esi);
+
 	}
+
+
+
 	if(!f) {
 		printf("%d:alc_rx.c - UNABLE TO OPEN FILE %s\n", __LINE__, myFilePathName);
 		return -31337;
